@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Eco Nativo Dual</title>
+    
+    <meta property="og:title" content="Eco Nativo Dual">
+    <meta property="og:description" content="Traductor profesional de alta fidelity.">
+    <meta property="og:image" content="icon-512.png">
+    <meta property="og:type" content="website">
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e1e1e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <style>
+        :root {
+            --bg-me: #1e1e1e;
+            --bg-client: #ffffff;
+            --c-idle: #ea4335;
+            --c-me: #ff7a00; 
+            --c-client: #34a853;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            margin: 0; padding: 0; 
+            font-family: -apple-system, system-ui, sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html { 
+            height: 100dvh; overflow: hidden; 
+            background-color: #000;
+            display: flex; flex-direction: column;
+            user-select: none;
+        }
+
+        #splash {
+            position: fixed; inset: 0; background: #1e1e1e; color: white;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 3000; transition: opacity 0.5s ease;
+        }
+        #splash.hidden { opacity: 0; pointer-events: none; }
+
+        #part-client {
+            height: 50dvh; background-color: var(--bg-client);
+            transform: rotate(180deg); display: flex; flex-direction: column;
+            padding: 20px 30px; justify-content: center; align-items: center;
+            position: relative; border-bottom: 1px solid #ddd;
+        }
+
+        #part-me {
+            height: 50dvh; background-color: var(--bg-me); color: white;
+            display: flex; flex-direction: column; padding: 30px;
+            justify-content: center; align-items: center; position: relative;
+        }
+
+        .lang-label {
+            font-size: 16px; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 2px; color: var(--c-me); margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .text-display {
+            font-size: 26px; font-weight: 700; text-align: center;
+            width: 100%; line-height: 1.3; min-height: 1.3em;
+            max-height: 60%; overflow-y: auto; padding: 0 10px;
+        }
+        .client-text { color: #333; }
+        .me-text { color: #fff; }
+        .interim { opacity: 0.4; font-weight: 400; }
+
+        .controls {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); z-index: 500; 
+            pointer-events: none; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .mic-wrapper {
+            position: absolute; pointer-events: auto;
+            transition: transform 0.75s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .mic-btn {
+            width: 90px; height: 90px; border-radius: 50%;
+            border: 6px solid #000; background: var(--c-idle); 
+            color: white; font-size: 38px; cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            transition: background-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s ease;
+        }
+
+        .controls.pos-me .mic-wrapper { transform: translateY(80px); }
+        .controls.pos-client .mic-wrapper { transform: translateY(-130px); } 
+
+        .mode-me .mic-btn { background: var(--c-me); box-shadow: 0 0 30px var(--c-me); }
+        
+        .mode-client .mic-btn { 
+            background: var(--c-client); 
+            transform: scale(1.1);
+            animation: pulse-green-glow 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+        }
+
+        @keyframes pulse-green-glow {
+            0%, 100% { box-shadow: 0 0 25px rgba(52, 168, 83, 0.6); }
+            50% { box-shadow: 0 0 45px rgba(52, 168, 83, 0.9), 0 0 0 15px rgba(52, 168, 83, 0%); }
+        }
+
+        .flags {
+            position: absolute; 
+            top: calc(15px + env(safe-area-inset-top)); 
+            display: flex; gap: 15px; z-index: 600;
+        }
+        .flag-btn {
+            font-size: 26px; background: rgba(0,0,0,0.05); 
+            border: 2px solid transparent; border-radius: 50%; 
+            width: 55px; height: 55px; display: flex; 
+            align-items: center; justify-content: center; 
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .flag-btn.active { border-color: var(--c-me); background: rgba(0,0,0,0.1); transform: scale(1.1); }
+    </style>
+</head>
+<body>
+
+    <div id="splash">
+        <div style="font-size: 60px; margin-bottom: 20px;">🗣️</div>
+        <h2 style="letter-spacing: 4px; font-weight: 300;">ECO NATIVO DUAL</h2>
+        <p style="font-size: 10px; margin-top: 10px; opacity: 0.5; letter-spacing: 2px;">MODO FIDELIDAD TOTAL</p>
+    </div>
+
+    <div id="part-client">
+        <div class="flags">
+            <button class="flag-btn active" onclick="setLang('en', 'Inglés', event)">🇬🇧</button>
+            <button class="flag-btn" onclick="setLang('fr', 'Francés', event)">🇫🇷</button>
+            <button class="flag-btn" onclick="setLang('de', 'Alemán', event)">🇩🇪</button>
+            <button class="flag-btn" onclick="setLang('it', 'Italiano', event)">🇮🇹</button>
+        </div>
+        <div class="text-display client-text" id="text-client">...</div>
+    </div>
+
+    <div class="controls" id="control-zone">
+        <div class="mic-wrapper">
+            <button class="mic-btn" id="main-mic" onclick="toggleApp()">🎙️</button>
+        </div>
+    </div>
+
+    <div id="part-me">
+        <div class="lang-label" id="label-client">INGLÉS</div>
+        <div class="text-display me-text" id="text-me">Pulsa para iniciar</div>
+    </div>
+
+    <script>
+        // medbasha - cloud acoustic recognition pipeline unifier
+        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js'); }
+
+        const GOOGLE_CLOUD_API_KEY = "AIzaSyDaUBKDwJdQGKq7nwMOTpjWy29XuS4IzJ4";
+
+        let targetLang = 'en';
+        let isRunning = false;
+        let currentTurn = 'me'; 
+        let autoStopTimer;
+        let mediaRecorder;
+        let audioChunks = [];
+
+        const langCodes = { 'en': 'en-US', 'fr': 'fr-FR', 'de': 'de-DE', 'it': 'it-IT' };
+        const fallbackMsgs = {
+            'es': 'Lo siento, no he entendido. ¿Puede repetir?',
+            'en': 'I am sorry, I did not understand. Can you repeat?',
+            'fr': 'Désolé, je n\'ai pas compris. Pouvez-vous répéter?',
+            'de': 'Entschuldigung, das habe ich nicht verstanden. Können Sie das wiederholen?',
+            'it': 'Mi dispiace, non ho capito. Puoi repetir?'
+        };
+
+        window.onload = () => { setTimeout(() => document.getElementById('splash').classList.add('hidden'), 1500); };
+
+        function setLang(lang, name, event) {
+            targetLang = lang;
+            document.getElementById('label-client').innerText = name;
+            document.querySelectorAll('.flag-btn').forEach(b => b.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+        }
+
+        function protectProperNouns(text) {
+            const localTerms = ["Mahón", "Menorca", "Ciutadella", "Alaior", "Fornells", "Sánchez", "Dr.", "carro", "autobus", "bus", "boleto"];
+            let words = text.split(' ');
+            return words.map(word => {
+                if (localTerms.some(t => t.toLowerCase() === word.toLowerCase())) return word; 
+                return word;
+            }).join(' ');
+        }
+
+        function internalEngineFilter(text, contextTurn) {
+            let processed = text.trim();
+            const corrections = [
+                { match: /\bcarro\b/gi, replace: "coche" },
+                { match: /\bcarros\b/gi, replace: "coches" },
+                { match: /\bautobus\b/gi, replace: "autobús" },
+                { match: /\bbuses\b/gi, replace: "autobuses" },
+                { match: /\bboleto\b/gi, replace: "billete" },
+                { match: /\bboletos\b/gi, replace: "billetes" }
+            ];
+
+            if (contextTurn === 'client' && /^(sí,? lo he hecho\.?|si lo he hecho\.?)$/i.test(processed)) {
+                processed = "Sí, lo tengo.";
+            }
+
+            corrections.forEach(rule => { processed = processed.replace(rule.match, rule.replace); });
+            return processed.charAt(0).toUpperCase() + processed.slice(1);
+        }
+
+        function toggleApp() {
+            if (isRunning) stopConversation();
+            else { isRunning = true; currentTurn = 'me'; startListening(); }
+        }
+
+        function updateUI() {
+            const container = document.getElementById('control-zone');
+            if (!isRunning) { container.className = 'controls'; return; }
+            container.className = currentTurn === 'me' ? 'controls pos-me mode-me' : 'controls pos-client mode-client';
+        }
+
+        async function startListening() {
+            if (!isRunning) return;
+            updateUI();
+            clearTimeout(autoStopTimer);
+            
+            autoStopTimer = setTimeout(stopConversation, 15000);
+
+            const currentDisplay = currentTurn === 'me' ? document.getElementById('text-me') : document.getElementById('text-client');
+            currentDisplay.innerHTML = `<span class="interim">🎤 Escuchando...</span>`;
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+                
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = async () => {
+                        const base64Audio = reader.result.split(',')[1];
+                        await sendToGoogleSpeech(base64Audio);
+                    };
+                };
+
+                mediaRecorder.start();
+                
+                setTimeout(() => {
+                    if (mediaRecorder && mediaRecorder.state === "recording") {
+                        mediaRecorder.stop();
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                }, 4500);
+
+            } catch (e) {
+                triggerFallback();
+            }
+        }
+
+        async function sendToGoogleSpeech(base64Audio) {
+            if (!isRunning) return;
+            
+            const currentLangCode = currentTurn === 'me' ? 'es-ES' : langCodes[targetLang];
+            const url = `https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_CLOUD_API_KEY}`;
+            
+            const payload = {
+                config: {
+                    encoding: 'WEBM_OPUS',
+                    sampleRateHertz: 48000,
+                    languageCode: currentLangCode,
+                    enableAutomaticPunctuation: true
+                },
+                audio: { content: base64Audio }
+            };
+
+            try {
+                const response = await fetch(url, { method: 'POST', body: JSON.stringify(payload) });
+                const data = await response.json();
+                
+                if (data.results && data.results[0]) {
+                    const alternative = data.results[0].alternatives[0];
+                    const transcript = alternative.transcript;
+                    const confidence = alternative.confidence || 1.0;
+
+                    if (confidence < 0.88) { triggerFallback(); return; }
+
+                    processFinalText(transcript.trim());
+                } else {
+                    triggerFallback();
+                }
+            } catch (e) {
+                triggerFallback();
+            }
+        }
+
+        async function processFinalText(text) {
+            if (!text) return;
+            
+            let cleanText = protectProperNouns(text);
+            cleanText = internalEngineFilter(cleanText, currentTurn);
+            
+            const el = currentTurn === 'me' ? document.getElementById('text-me') : document.getElementById('text-client');
+            el.innerText = cleanText;
+
+            try {
+                const from = currentTurn === 'me' ? 'es' : targetLang; 
+                const to = currentTurn === 'me' ? targetLang : 'es';
+                
+                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(cleanText)}&langpair=${from}|${to}&context=Proper_Nouns_Names_Streets`);
+                const data = await res.json();
+                let translated = data.responseData.translatedText;
+
+                translated = protectProperNouns(translated);
+                translated = internalEngineFilter(translated, currentTurn === 'me' ? 'me' : 'client');
+
+                if (currentTurn === 'me') {
+                    document.getElementById('text-client').innerText = translated;
+                    speak(translated, langCodes[targetLang], () => {
+                        currentTurn = 'client'; 
+                        setTimeout(startListening, 1500);
+                    });
+                } else {
+                    document.getElementById('text-me').innerText = translated;
+                    speak(translated, 'es-ES', () => {
+                        currentTurn = 'me'; 
+                        setTimeout(startListening, 1500);
+                    });
+                }
+            } catch (e) { triggerFallback(); }
+        }
+
+        function triggerFallback() {
+            const lang = currentTurn === 'me' ? 'es' : targetLang;
+            const msg = fallbackMsgs[lang];
+            const el = currentTurn === 'me' ? document.getElementById('text-me') : document.getElementById('text-client');
+            el.innerText = msg;
+            speak(msg, currentTurn === 'me' ? 'es-ES' : langCodes[targetLang], () => {
+                setTimeout(startListening, 1500);
+            });
+        }
+
+        function speak(text, lang, callback) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = lang; u.rate = 0.95; u.onend = callback;
+            window.speechSynthesis.speak(u);
+        }
+
+        function stopConversation() {
+            isRunning = false; clearTimeout(autoStopTimer);
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                try { mediaRecorder.stop(); } catch(e) {}
+            }
+            window.speechSynthesis.cancel();
+            document.getElementById('text-me').innerText = "Modo reposo";
+            document.getElementById('text-client').innerText = "...";
+            updateUI();
+        }
+
+        document.addEventListener("visibilitychange", () => { if (document.hidden) stopConversation(); });
+    </script>
+</body>
+</html>
