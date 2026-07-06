@@ -136,11 +136,8 @@
     </div>
 
     <div id="part-client">
-        <div class="flags">
-            <button class="flag-btn active" onclick="setLang('en', 'Inglés', event)">🇬🇧</button>
-            <button class="flag-btn" onclick="setLang('fr', 'Francés', event)">🇫🇷</button>
-            <button class="flag-btn" onclick="setLang('de', 'Alemán', event)">🇩🇪</button>
-            <button class="flag-btn" onclick="setLang('it', 'Italiano', event)">🇮🇹</button>
+        <div class="flags" id="flags-container">
+            <!-- Se generan dinámicamente por JavaScript según el idioma detectado -->
         </div>
         <div class="text-display client-text" id="text-client">...</div>
     </div>
@@ -152,8 +149,8 @@
     </div>
 
     <div id="part-me">
-        <div class="lang-label" id="label-client">INGLÉS</div>
-        <div class="text-display me-text" id="text-me">Pulsa para iniciar</div>
+        <div class="lang-label" id="label-client">...</div>
+        <div class="text-display me-text" id="text-me">...</div>
     </div>
 
     <script>
@@ -162,6 +159,8 @@
 
         const GOOGLE_CLOUD_API_KEY = "AIzaSyDaUBKDwJdQGKq7nwMOTpjWy29XuS4IzJ4";
 
+        // Configuración de Localización Inteligente
+        let userLang = 'es'; 
         let targetLang = 'en';
         let isRunning = false;
         let currentTurn = 'me'; 
@@ -169,20 +168,81 @@
         let mediaRecorder;
         let audioChunks = [];
 
-        const langCodes = { 'en': 'en-US', 'fr': 'fr-FR', 'de': 'de-DE', 'it': 'it-IT' };
+        const langCodes = { 'es': 'es-ES', 'en': 'en-US', 'fr': 'fr-FR', 'de': 'de-DE', 'it': 'it-IT' };
+        const langNames = {
+            'es': { 'es': 'Español', 'en': 'Spanish', 'fr': 'Espagnol', 'de': 'Spanisch', 'it': 'Spagnolo' },
+            'en': { 'es': 'Inglés', 'en': 'English', 'fr': 'Anglais', 'de': 'Englisch', 'it': 'Inglese' },
+            'fr': { 'es': 'Francés', 'en': 'French', 'fr': 'Français', 'de': 'Französisch', 'it': 'Francese' },
+            'de': { 'es': 'Alemán', 'en': 'German', 'fr': 'Allemand', 'de': 'Deutsch', 'it': 'Tedesco' },
+            'it': { 'es': 'Italiano', 'en': 'Italian', 'fr': 'Italien', 'de': 'Italienisch', 'it': 'Italiano' }
+        };
+
+        const actionMsgs = {
+            'es': 'Pulsa el micrófono para hablar',
+            'en': 'Tap the microphone to speak',
+            'fr': 'Appuyez sur le micro pour parler',
+            'de': 'Tippen Sie auf das Mikrofon',
+            'it': 'Tocca il microfono per parlare'
+        };
+
         const fallbackMsgs = {
             'es': 'Lo siento, no he entendido. ¿Puede repetir?',
             'en': 'I am sorry, I did not understand. Can you repeat?',
             'fr': 'Désolé, je n\'ai pas compris. Pouvez-vous répéter?',
             'de': 'Entschuldigung, das habe ich nicht verstanden. Können Sie das wiederholen?',
-            'it': 'Mi dispiace, non ho capito. Puoi repetir?'
+            'it': 'Mi dispiace, non ho capito. Puoi ripetere?'
         };
 
-        window.onload = () => { setTimeout(() => document.getElementById('splash').classList.add('hidden'), 1500); };
+        // Inicialización y detección automática al cargar la página
+        window.onload = () => {
+            detectDeviceLanguage();
+            setupFlagsStructure();
+            resetToIdleMessage();
+            setTimeout(() => document.getElementById('splash').classList.add('hidden'), 1500); 
+        };
+
+        function detectDeviceLanguage() {
+            const sysLang = navigator.language || navigator.userLanguage;
+            const shortLang = sysLang.substring(0, 2).toLowerCase();
+            if (['en', 'fr', 'de', 'it'].includes(shortLang)) {
+                userLang = shortLang;
+                targetLang = 'es'; // Si el conductor no es español, el cliente por defecto es España
+            } else {
+                userLang = 'es';
+                targetLang = 'en'; // Por defecto para conductor español
+            }
+        }
+
+        function setupFlagsStructure() {
+            const container = document.getElementById('flags-container');
+            container.innerHTML = '';
+            
+            // Lista completa de idiomas soportados
+            const allOptions = ['en', 'fr', 'de', 'it', 'es'];
+            const flagIcons = { 'en': '🇬🇧', 'fr': '🇫🇷', 'de': '🇩🇪', 'it': '🇮🇹', 'es': '🇪🇸' };
+
+            // Filtramos el idioma del conductor para no mostrar su propia bandera arriba
+            const availableTargets = allOptions.filter(l => l !== userLang);
+
+            availableTargets.forEach(lang => {
+                const btn = document.createElement('button');
+                btn.className = `flag-btn ${lang === targetLang ? 'active' : ''}`;
+                btn.innerText = flagIcons[lang];
+                btn.onclick = (e) => setLang(lang, langNames[lang][userLang], e);
+                container.appendChild(btn);
+            });
+
+            document.getElementById('label-client').innerText = langNames[targetLang][userLang].toUpperCase();
+        }
+
+        function resetToIdleMessage() {
+            document.getElementById('text-me').innerText = actionMsgs[userLang];
+            document.getElementById('text-client').innerText = "...";
+        }
 
         function setLang(lang, name, event) {
             targetLang = lang;
-            document.getElementById('label-client').innerText = name;
+            document.getElementById('label-client').innerText = name.toUpperCase();
             document.querySelectorAll('.flag-btn').forEach(b => b.classList.remove('active'));
             event.currentTarget.classList.add('active');
         }
@@ -234,7 +294,10 @@
             autoStopTimer = setTimeout(stopConversation, 15000);
 
             const currentDisplay = currentTurn === 'me' ? document.getElementById('text-me') : document.getElementById('text-client');
-            currentDisplay.innerHTML = `<span class="interim">🎤 Escuchando...</span>`;
+            
+            // Mensaje transitorio de escucha según el turno e idioma activo
+            const listeningText = currentTurn === 'me' ? (userLang === 'es' ? 'Escuchando...' : 'Listening...') : '...';
+            currentDisplay.innerHTML = `<span class="interim">🎤 ${listeningText}</span>`;
 
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -270,7 +333,7 @@
         async function sendToGoogleSpeech(base64Audio) {
             if (!isRunning) return;
             
-            const currentLangCode = currentTurn === 'me' ? 'es-ES' : langCodes[targetLang];
+            const currentLangCode = currentTurn === 'me' ? langCodes[userLang] : langCodes[targetLang];
             const url = `https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_CLOUD_API_KEY}`;
             
             const payload = {
@@ -313,8 +376,8 @@
             el.innerText = cleanText;
 
             try {
-                const from = currentTurn === 'me' ? 'es' : targetLang; 
-                const to = currentTurn === 'me' ? targetLang : 'es';
+                const from = currentTurn === 'me' ? userLang : targetLang; 
+                const to = currentTurn === 'me' ? targetLang : userLang;
                 
                 const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(cleanText)}&langpair=${from}|${to}&context=Proper_Nouns_Names_Streets`);
                 const data = await res.json();
@@ -331,7 +394,7 @@
                     });
                 } else {
                     document.getElementById('text-me').innerText = translated;
-                    speak(translated, 'es-ES', () => {
+                    speak(translated, langCodes[userLang], () => {
                         currentTurn = 'me'; 
                         setTimeout(startListening, 1500);
                     });
@@ -340,11 +403,11 @@
         }
 
         function triggerFallback() {
-            const lang = currentTurn === 'me' ? 'es' : targetLang;
+            const lang = currentTurn === 'me' ? userLang : targetLang;
             const msg = fallbackMsgs[lang];
             const el = currentTurn === 'me' ? document.getElementById('text-me') : document.getElementById('text-client');
             el.innerText = msg;
-            speak(msg, currentTurn === 'me' ? 'es-ES' : langCodes[targetLang], () => {
+            speak(msg, currentTurn === 'me' ? langCodes[userLang] : langCodes[targetLang], () => {
                 setTimeout(startListening, 1500);
             });
         }
@@ -362,8 +425,7 @@
                 try { mediaRecorder.stop(); } catch(e) {}
             }
             window.speechSynthesis.cancel();
-            document.getElementById('text-me').innerText = "Modo reposo";
-            document.getElementById('text-client').innerText = "...";
+            resetToIdleMessage();
             updateUI();
         }
 
